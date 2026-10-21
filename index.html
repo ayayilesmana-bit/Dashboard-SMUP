@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Executive PMB & SMUP - Universitas Padjadjaran / SMUP Center</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Tailwind Config for Theme Customization -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        },
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                        borderbg: '#334155'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        
+        /* Pulse dot animation */
+        @keyframes pulse-green {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.6; }
+        }
+        .animate-pulse-dot {
+            animation: pulse-green 1.8s infinite ease-in-out;
+        }
+
+        /* Flash glow animation for new rows in live stream */
+        @keyframes highlight-row {
+            0% { background-color: rgba(99, 102, 241, 0.35); }
+            100% { background-color: transparent; }
+        }
+        .new-row-flash {
+            animation: highlight-row 1.5s ease-out;
+        }
+
+        /* Styling sliders */
+        input[type=range] {
+            accent-color: #6366f1;
+        }
+    </style>
+</head>
+<body class="bg-darkbg text-slate-100 font-sans min-h-screen antialiased flex flex-col">
+
+    <!-- TOP HEADER / BRANDING BAR -->
+    <header class="bg-cardbg border-b border-borderbg sticky top-0 z-50 shadow-lg backdrop-blur-md bg-opacity-90">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            
+            <!-- Logo & Title -->
+            <div class="flex items-center space-x-3.5">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                    <i class="fa-solid font-bold fa-graduation-cap text-xl"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white">DASHBOARD EXECUTIVE PMB & SMUP</h1>
+                        <span class="text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-medium">TA 2026/2027</span>
+                    </div>
+                    <p class="text-xs text-slate-400">Universitas Padjadjaran • Seleksi Masuk Universitas Padjadjaran & PMB Real-Time Analytics</p>
+                </div>
+            </div>
+
+            <!-- Header Controls & Live Status -->
+            <div class="flex items-center justify-between md:justify-end gap-3">
+                <!-- Live Status Badge -->
+                <div class="flex items-center bg-slate-900/80 border border-slate-700/80 px-3 py-1.5 rounded-lg text-xs gap-2.5">
+                    <div class="flex items-center gap-1.5">
+                        <span id="livePulse" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-dot"></span>
+                        <span id="liveStatusText" class="font-semibold text-emerald-400 tracking-wide uppercase">LIVE</span>
+                    </div>
+                    <span class="text-slate-500">|</span>
+                    <span id="lastUpdated" class="text-slate-400 font-mono text-[11px]">Syncing...</span>
+                    <button id="toggleLiveBtn" onclick="toggleLiveStream()" title="Toggle Real-Time Simulation" class="ml-1 text-slate-400 hover:text-white transition">
+                        <i id="toggleLiveIcon" class="fa-solid fa-pause text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Export CSV Button -->
+                <button onclick="exportToCSV()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3.5 py-2 rounded-lg transition flex items-center gap-2 shadow-sm shadow-indigo-600/30">
+                    <i class="fa-solid fa-download"></i>
+                    <span class="hidden sm:inline">Export Data</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- GLOBAL FILTERS BAR -->
+        <div class="bg-slate-900/90 border-t border-borderbg/60 px-4 sm:px-6 lg:px-8 py-2.5">
+            <div class="max-w-7xl mx-auto flex flex-wrap items-center gap-3 text-xs">
+                <span class="text-slate-400 font-medium flex items-center gap-1.5 mr-1">
+                    <i class="fa-solid fa-filter text-indigo-400"></i> Filter Global:
+                </span>
+
+                <!-- Filter Jalur Seleksi -->
+                <select id="filterJalur" onchange="applyGlobalFilters()" class="bg-cardbg border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <option value="ALL">Semua Jalur Seleksi</option>
+                    <option value="SMUP Mandiri" selected>SMUP Mandiri Sarjana</option>
+                    <option value="SNBP">SNBP (Prestasi Nasional)</option>
+                    <option value="SNBT">SNBT (Tes Nasional)</option>
+                    <option value="Prestasi">SMUP Jalur Prestasi</option>
+                    <option value="Internasional">IUP / Kelas Internasional</option>
+                </select>
+
+                <!-- Filter Gelombang -->
+                <select id="filterGelombang" onchange="applyGlobalFilters()" class="bg-cardbg border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <option value="ALL">Semua Gelombang</option>
+                    <option value="Gelombang 1" selected>Gelombang I Utama</option>
+                    <option value="Gelombang 2">Gelombang II Lanjutan</option>
+                </select>
+
+                <!-- Filter Fakultas -->
+                <select id="filterFakultas" onchange="applyGlobalFilters()" class="bg-cardbg border border-slate-700 rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500">
+                    <option value="ALL">Semua Fakultas (16 Fakultas)</option>
+                    <option value="Kedokteran">Fakultas Kedokteran (FK)</option>
+                    <option value="Hukum">Fakultas Hukum (FH)</option>
+                    <option value="Ekonomi & Bisnis">Fakultas Ekonomi & Bisnis (FEB)</option>
+                    <option value="Teknik Industri">Fakultas Teknik Geologi & FT (FTI)</option>
+                    <option value="MIPA">Fakultas MIPA</option>
+                    <option value="Ilmu Komunikasi">Fakultas Ilmu Komunikasi (FIKOM)</option>
+                    <option value="Psikologi">Fakultas Psikologi (FPsi)</option>
+                    <option value="Farmasi">Fakultas Farmasi (FFarmasi)</option>
+                </select>
+
+                <!-- Reset Filters Button -->
+                <button onclick="resetFilters()" class="text-slate-400 hover:text-rose-400 ml-auto transition text-xs flex items-center gap-1">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- MAIN TABS NAVIGATION -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-1">
+            <nav class="flex space-x-2 sm:space-x-6 border-b border-transparent overflow-x-auto no-scrollbar" aria-label="Tabs">
+                <button onclick="switchTab('realtime')" id="tabBtn-realtime" class="tab-btn px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 border-indigo-500 text-indigo-400 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-chart-line"></i> 📊 Pemantauan Real-Time PMB
+                </button>
+                <button onclick="switchTab('keketatan')" id="tabBtn-keketatan" class="tab-btn px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-chart-pie"></i> 📈 Analisis Keketatan SMUP
+                </button>
+                <button onclick="switchTab('simulasi')" id="tabBtn-simulasi" class="tab-btn px-4 py-3 text-xs sm:text-sm font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-sliders"></i> 🧮 Simulasi Quota & DSS
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+
+        <!-- ========================================================================= -->
+        <!-- TAB 1: PEMANTAUAN REAL-TIME PMB -->
+        <!-- ========================================================================= -->
+        <div id="tabContent-realtime" class="tab-content space-y-6">
+            
+            <!-- Real-Time KPI Cards Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <!-- Card 1: Total Pendaftar -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-4 shadow-sm relative overflow-hidden">
+                    <div class="absolute right-3 top-3 w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                        <i class="fa-solid fa-users text-lg"></i>
+                    </div>
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Pendaftar (Akun)</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span id="kpiTotalPendaftar" class="text-2xl sm:text-3xl font-extrabold text-white font-mono">24,850</span>
+                        <span id="kpiGrowthBadge" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center gap-1">
+                            <i class="fa-solid fa-arrow-trend-up text-[10px]"></i> +12.4%
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block"></span> Terkoneksi ke server pendaftaran
+                    </p>
+                </div>
+
+                <!-- Card 2: Berkas Terverifikasi -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-4 shadow-sm relative overflow-hidden">
+                    <div class="absolute right-3 top-3 w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                        <i class="fa-solid fa-file-circle-check text-lg"></i>
+                    </div>
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Berkas Terverifikasi</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span id="kpiVerifiedCount" class="text-2xl sm:text-3xl font-extrabold text-white font-mono">19,420</span>
+                        <span class="text-xs text-slate-400 font-medium">(78.1%)</span>
+                    </div>
+                    <!-- Progress bar -->
+                    <div class="w-full bg-slate-700/60 rounded-full h-1.5 mt-3 overflow-hidden">
+                        <div id="kpiVerifiedBar" class="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style="width: 78.1%"></div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Pembayaran Lunas -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-4 shadow-sm relative overflow-hidden">
+                    <div class="absolute right-3 top-3 w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                        <i class="fa-solid fa-wallet text-lg"></i>
+                    </div>
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Pembayaran Lunas (Nominal)</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span id="kpiTotalNominal" class="text-2xl sm:text-3xl font-extrabold text-amber-400 font-mono">Rp 12.42 M</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-2">
+                        Total <strong id="kpiPaidCount" class="text-slate-200 font-mono">21,150</strong> transaksi berhasil via Host-to-Host
+                    </p>
+                </div>
+
+                <!-- Card 4: Berkas Final Ready -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-4 shadow-sm relative overflow-hidden">
+                    <div class="absolute right-3 top-3 w-10 h-10 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                        <i class="fa-solid fa-clipboard-check text-lg"></i>
+                    </div>
+                    <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Siap Dievaluasi (Final)</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span id="kpiFinalCount" class="text-2xl sm:text-3xl font-extrabold text-white font-mono">17,890</span>
+                        <span class="text-xs text-slate-400 font-medium">(72.0%)</span>
+                    </div>
+                    <p class="text-[11px] text-emerald-400 mt-2 flex items-center gap-1">
+                        <i class="fa-solid fa-check-double text-[10px]"></i> Siap diproses panitia seleksi
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- Charts Row 1 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Hourly Registration Trend Line Chart -->
+                <div class="lg:col-span-2 bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-indigo-400"></i> Tren Pendaftaran Per Jam (Hari Ini vs Kemarin)
+                            </h3>
+                            <p class="text-xs text-slate-400">Frekuensi calon mahasiswa menyelesaikan pendaftaran akun</p>
+                        </div>
+                        <span class="text-[11px] bg-slate-800 border border-slate-700 text-slate-300 px-2.5 py-1 rounded-md font-mono">
+                            Update: Live
+                        </span>
+                    </div>
+                    <div class="h-64 w-full">
+                        <canvas id="hourlyTrendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Status Progress Doughnut Chart -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2 mb-1">
+                            <i class="fa-solid fa-chart-pie text-emerald-400"></i> Status Tahapan Peserta
+                        </h3>
+                        <p class="text-xs text-slate-400 mb-4">Komposisi peserta berdasarkan tahap pendaftaran</p>
+                    </div>
+                    <div class="h-52 w-full flex items-center justify-center relative">
+                        <canvas id="statusDoughnutChart"></canvas>
+                    </div>
+                    <div class="mt-4 pt-3 border-t border-slate-700/60 grid grid-cols-2 gap-2 text-[11px] text-slate-300">
+                        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span> Draf / Akun (12%)</div>
+                        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Belum Bayar (8%)</div>
+                        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Verifikasi Berkas (8%)</div>
+                        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Final / Cetak Kartu (72%)</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Faculty Distribution Bar Chart & Live Feed -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Faculty Distribution Chart -->
+                <div class="lg:col-span-2 bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-building-columns text-amber-400"></i> Sebaran Pendaftar per Fakultas
+                            </h3>
+                            <p class="text-xs text-slate-400">Jumlah total pendaftar yang memprioritaskan pilihan 1 per Fakultas</p>
+                        </div>
+                    </div>
+                    <div class="h-64 w-full">
+                        <canvas id="facultyBarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Live Feed Stream Panel -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm flex flex-col h-80 lg:h-auto">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-bolt text-amber-400 animate-pulse"></i> Live Activity Stream
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <button onclick="clearLiveLog()" class="text-[11px] text-slate-400 hover:text-slate-200">Clear</button>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-3">Aktivitas pendaftaran masuk terkini secara langsung</p>
+                    
+                    <div class="flex-grow overflow-y-auto pr-1 space-y-2.5" id="liveFeedContainer">
+                        <!-- Simulated live items dynamically prepended here -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================================================= -->
+        <!-- TAB 2: ANALISIS KEKETATAN SMUP -->
+        <!-- ========================================================================= -->
+        <div id="tabContent-keketatan" class="tab-content hidden space-y-6">
+            
+            <!-- Explanation & Formula Banner -->
+            <div class="bg-gradient-to-r from-indigo-900/40 via-cardbg to-slate-900 border border-indigo-500/30 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div class="flex items-start gap-3">
+                    <div class="p-2.5 rounded-lg bg-indigo-500/20 text-indigo-300 mt-0.5">
+                        <i class="fa-solid fa-calculator text-xl"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-white">Indikator Keketatan Seleksi SMUP</h4>
+                        <p class="text-xs text-slate-300 mt-0.5">
+                            Keketatan dihitung berdasarkan formula resmi: 
+                            <code class="bg-slate-900 px-2 py-0.5 rounded text-amber-300 font-mono text-[11px]">Persentase Keketatan (%) = (Total Daya Tampung ÷ Total Pendaftar) × 100%</code>.
+                            Semakin <strong>kecil persentase (%)</strong>, semakin <strong>ketat</strong> tingkat persaingan (Rasio 1 : N).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Keketatan Analytic KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-cardbg border border-borderbg rounded-xl p-4">
+                    <p class="text-xs text-slate-400 uppercase font-medium">Total Daya Tampung SMUP</p>
+                    <p id="kpiDayaTampungTotal" class="text-2xl font-bold font-mono text-white mt-1">1,690 Kursi</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Alokasi seluruh Prodi terdaftar</p>
+                </div>
+                <div class="bg-cardbg border border-borderbg rounded-xl p-4">
+                    <p class="text-xs text-slate-400 uppercase font-medium">Total Pendaftar SMUP</p>
+                    <p id="kpiPendaftarSMUP" class="text-2xl font-bold font-mono text-indigo-400 mt-1">24,850 Siswa</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Pilihan Program Studi 1 & 2</p>
+                </div>
+                <div class="bg-cardbg border border-borderbg rounded-xl p-4">
+                    <p class="text-xs text-slate-400 uppercase font-medium">Rata-Rata Keketatan Unpad</p>
+                    <p id="kpiAvgKeketatan" class="text-2xl font-bold font-mono text-amber-400 mt-1">6.80%</p>
+                    <p class="text-[11px] text-slate-400 mt-1">Rata-rata rasio 1 : 14.7 peserta</p>
+                </div>
+                <div class="bg-cardbg border border-borderbg rounded-xl p-4">
+                    <p class="text-xs text-slate-400 uppercase font-medium">Prodi Terketat (#1)</p>
+                    <p id="kpiProdiTerketat" class="text-lg font-bold text-rose-400 mt-1 truncate">S1 Kedokteran</p>
+                    <p class="text-[11px] text-rose-300 font-mono mt-0.5">Keketatan: 2.35% (1 : 42.5)</p>
+                </div>
+            </div>
+
+            <!-- Visualizations Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Top 10 Prodi Terketat Horizontal Bar Chart -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2 mb-1">
+                        <i class="fa-solid fa-fire text-rose-400"></i> Top 10 Program Studi Terketat (Persaingan Tertinggi)
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Persentase kelolosan terendah (1 : N tertinggi)</p>
+                    <div class="h-72 w-full">
+                        <canvas id="topKeketatanChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Grouped Bar Chart: Capacity vs Applicants per Faculty -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2 mb-1">
+                        <i class="fa-solid fa-scale-balanced text-indigo-400"></i> Perbandingan Daya Tampung vs Pendaftar per Fakultas
+                    </h3>
+                    <p class="text-xs text-slate-400 mb-4">Evaluasi beban pendaftar terhadap kapasitas kursi</p>
+                    <div class="h-72 w-full">
+                        <canvas id="capacityVsApplicantsChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Program Studi Interactive Table -->
+            <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm">
+                
+                <!-- Table Controls Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                    <div>
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-table-list text-emerald-400"></i> Tabel Keketatan & Persaingan Program Studi
+                        </h3>
+                        <p class="text-xs text-slate-400">Data rinci per Program Studi untuk evaluasi penerimaan</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <!-- Table Search Input -->
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                            <input type="text" id="tableSearchInput" onkeyup="filterProdiTable()" placeholder="Cari nama prodi / kode..." class="bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 w-48 sm:w-60">
+                        </div>
+
+                        <!-- Table Sort Select -->
+                        <select id="tableSortSelect" onchange="filterProdiTable()" class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="terketat">Urutkan: Terketat (< %)</option>
+                            <option value="pendaftar_desc">Urutkan: Pendaftar Terbanyak</option>
+                            <option value="daya_tampung_desc">Urutkan: Daya Tampung Terbesar</option>
+                            <option value="prodi_asc">Urutkan: Nama Prodi (A-Z)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Responsive Table Wrapper -->
+                <div class="overflow-x-auto rounded-lg border border-slate-700/80">
+                    <table class="w-full text-left text-xs text-slate-200" id="prodiDataTable">
+                        <thead class="bg-slate-900/90 text-slate-400 uppercase font-semibold text-[11px] border-b border-slate-700">
+                            <tr>
+                                <th class="py-3 px-3">Kode</th>
+                                <th class="py-3 px-4">Program Studi</th>
+                                <th class="py-3 px-3">Fakultas</th>
+                                <th class="py-3 px-2 text-center">Jenjang</th>
+                                <th class="py-3 px-3 text-right">Daya Tampung</th>
+                                <th class="py-3 px-3 text-right">Pendaftar</th>
+                                <th class="py-3 px-3 text-center">Rasio (1 : N)</th>
+                                <th class="py-3 px-3 text-right">Keketatan (%)</th>
+                                <th class="py-3 px-4 text-center">Status Persaingan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prodiTableBody" class="divide-y divide-slate-800">
+                            <!-- Dynamically Generated Rows -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3 flex items-center justify-between text-xs text-slate-400">
+                    <span id="tableCountInfo">Menampilkan 0 Program Studi</span>
+                    <span class="text-[11px]">Kategori: <span class="text-rose-400 font-semibold">Sangat Ketat (&lt;5%)</span> • <span class="text-amber-400 font-semibold">Ketat (5-15%)</span> • <span class="text-emerald-400 font-semibold">Sedang (&gt;15%)</span></span>
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ========================================================================= -->
+        <!-- TAB 3: SIMULASI QUOTA & DECISION SUPPORT SYSTEM (DSS) -->
+        <!-- ========================================================================= -->
+        <div id="tabContent-simulasi" class="tab-content hidden space-y-6">
+            
+            <!-- Header Description -->
+            <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i> Tool Simulasi Quota & Decision Support System (What-If Analysis)
+                </h3>
+                <p class="text-xs text-slate-300 mt-1">
+                    Gunakan simulator ini untuk menguji skenario perubahan daya tampung program studi. Sistem akan secara otomatis menghitung ulang proyeksi rasio ketetatan, perubahan persaingan, serta estimasi batas nilai (cutoff score).
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Left Panel: Simulator Controls -->
+                <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm space-y-5">
+                    <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider border-b border-slate-700/60 pb-2">
+                        1. Pilih Parameter Program Studi
+                    </h4>
+
+                    <!-- Select Prodi -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1.5">Pilih Program Studi:</label>
+                        <select id="simProdiSelect" onchange="runQuotaSimulation()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-100 focus:outline-none focus:border-indigo-500 font-medium">
+                            <!-- Populated via Javascript -->
+                        </select>
+                    </div>
+
+                    <!-- Base Metrics Summary -->
+                    <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-3.5 space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Fakultas:</span>
+                            <span id="simBaseFakultas" class="font-semibold text-slate-200">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Daya Tampung Saat Ini:</span>
+                            <span id="simBaseQuota" class="font-bold text-slate-100 font-mono">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Total Pendaftar:</span>
+                            <span id="simBaseApplicants" class="font-bold text-indigo-400 font-mono">-</span>
+                        </div>
+                        <div class="flex justify-between border-t border-slate-800 pt-1.5">
+                            <span class="text-slate-400">Keketatan Eksisting:</span>
+                            <span id="simBaseRatio" class="font-bold text-amber-400 font-mono">-</span>
+                        </div>
+                    </div>
+
+                    <h4 class="text-xs font-bold uppercase text-slate-400 tracking-wider border-b border-slate-700/60 pb-2 pt-2">
+                        2. Simulasi Penyesuaian Quota
+                    </h4>
+
+                    <!-- Slider Adjustment -->
+                    <div>
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-slate-300 font-medium">Penyesuaian Kursi:</span>
+                            <span id="simSliderValueText" class="font-mono font-bold text-indigo-400">+0 Kursi (0%)</span>
+                        </div>
+                        <input type="range" id="simQuotaSlider" min="-50" max="100" value="0" step="5" oninput="runQuotaSimulation()" class="w-full h-2 bg-slate-900 rounded-lg appearance-none cursor-pointer">
+                        <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                            <span>-50 Kursi</span>
+                            <span>0 (Tetap)</span>
+                            <span>+100 Kursi</span>
+                        </div>
+                    </div>
+
+                    <!-- Target UKT / UKT Rate Input for Financial Projection -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1.5">Asumsi UKT Rata-rata / Semester (Rp):</label>
+                        <select id="simUKTSelect" onchange="runQuotaSimulation()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-200">
+                            <option value="7500000">Rp 7.500.000 / Mahasiswa</option>
+                            <option value="12500000" selected>Rp 12.500.000 / Mahasiswa</option>
+                            <option value="20000000">Rp 20.000.000 / Mahasiswa</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <!-- Right Panel: Dynamic Results & Recommendations -->
+                <div class="lg:col-span-2 space-y-6">
+                    
+                    <!-- Simulation Results Cards -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        
+                        <div class="bg-cardbg border border-borderbg rounded-xl p-4">
+                            <p class="text-xs text-slate-400 uppercase font-medium">Daya Tampung Baru</p>
+                            <p id="simResultNewQuota" class="text-2xl font-bold font-mono text-white mt-1">100</p>
+                            <p id="simQuotaDiffText" class="text-[11px] text-slate-400 mt-1">Tidak ada perubahan</p>
+                        </div>
+
+                        <div class="bg-cardbg border border-borderbg rounded-xl p-4">
+                            <p class="text-xs text-slate-400 uppercase font-medium">Rasio Keketatan Baru</p>
+                            <p id="simResultNewRatio" class="text-2xl font-bold font-mono text-amber-400 mt-1">1 : 42.5</p>
+                            <p id="simResultNewPercent" class="text-[11px] text-slate-300 font-mono mt-1">2.35% Persentase Kelolosan</p>
+                        </div>
+
+                        <div class="bg-cardbg border border-borderbg rounded-xl p-4">
+                            <p class="text-xs text-slate-400 uppercase font-medium">Est. Cutoff Score UTBK</p>
+                            <p id="simResultCutoffScore" class="text-2xl font-bold font-mono text-emerald-400 mt-1">712.5</p>
+                            <p id="simCutoffDiffText" class="text-[11px] text-slate-400 mt-1">Estimasi nilai minimal lolos</p>
+                        </div>
+
+                    </div>
+
+                    <!-- Financial & Impact Analysis Banner -->
+                    <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase font-medium">Proyeksi Dampak UKT (Per Semester)</p>
+                            <p id="simFinancialImpact" class="text-xl font-bold font-mono text-emerald-400 mt-1">Rp 0 / Smt</p>
+                            <p class="text-[11px] text-slate-400 mt-1">Estimasi penerimaan dari penambahan/pengurangan kuota registrasi</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-400 uppercase font-medium">Perubahan Status Persaingan</p>
+                            <div class="mt-1 flex items-center gap-2">
+                                <span id="simStatusBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                                    Sangat Ketat
+                                </span>
+                            </div>
+                            <p id="simStatusExplanation" class="text-[11px] text-slate-400 mt-1">Tingkat persaingan tetap tinggi di bawah 5%</p>
+                        </div>
+                    </div>
+
+                    <!-- Side by Side Chart Comparison -->
+                    <div class="bg-cardbg border border-borderbg rounded-xl p-5 shadow-sm">
+                        <h4 class="text-xs font-bold uppercase text-white tracking-wider mb-3">
+                            Perbandingan Eksisting vs Hasil Simulasi
+                        </h4>
+                        <div class="h-60 w-full">
+                            <canvas id="simulationCompareChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- AI Executive Recommendation Box -->
+                    <div class="bg-slate-900/90 border border-indigo-500/30 rounded-xl p-4 flex items-start gap-3">
+                        <div class="text-indigo-400 text-lg mt-0.5">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div class="text-xs space-y-1">
+                            <span class="font-bold text-indigo-300">Rekomendasi Keputusan Panitia Seleksi:</span>
+                            <p id="simRecommendationText" class="text-slate-300 leading-relaxed">
+                                Pilih program studi di panel sebelah kiri dan geser kuota untuk melihat rekomendasi otomatis.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-cardbg border-t border-borderbg py-4 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-400 mt-auto">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p>© 2026 Universitas Padjadjaran • Kantor Penerimaan Mahasiswa Baru & SMUP Center</p>
+            <p class="text-slate-400">Executive Decision Support Dashboard • Version 3.4 (Build 2026)</p>
+        </div>
+    </footer>
+
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        // =========================================================================
+        // DATA MODEL & INITIAL STATE
+        // =========================================================================
+        
+        // Dataset Program Studi
+        const PRODI_DATA = [
+            { id: "331001", name: "S1 Kedokteran", faculty: "Kedokteran", level: "S1", capacity: 100, applicants: 4250, baseScore: 712.5 },
+            { id: "331002", name: "S1 Psicologi", faculty: "Psikologi", level: "S1", capacity: 120, applicants: 2890, baseScore: 685.0 },
+            { id: "331003", name: "S1 Teknik Informatika", faculty: "MIPA", level: "S1", capacity: 90, applicants: 2450, baseScore: 692.0 },
+            { id: "331004", name: "S1 Farmasi", faculty: "Farmasi", level: "S1", capacity: 80, applicants: 1980, baseScore: 688.0 },
+            { id: "331005", name: "S1 Ilmu Hukum", faculty: "Hukum", level: "S1", capacity: 250, applicants: 3100, baseScore: 660.0 },
+            { id: "331006", name: "S1 Manajemen", faculty: "Ekonomi & Bisnis", level: "S1", capacity: 180, applicants: 2750, baseScore: 674.0 },
+            { id: "331007", name: "S1 Ilmu Komunikasi", faculty: "Ilmu Komunikasi", level: "S1", capacity: 110, applicants: 1850, baseScore: 668.5 },
+            { id: "331008", name: "S1 Akuntansi", faculty: "Ekonomi & Bisnis", level: "S1", capacity: 150, applicants: 1920, baseScore: 665.0 },
+            { id: "331009", name: "S1 Hubungan Internasional", faculty: "Ilmu Komunikasi", level: "S1", capacity: 90, applicants: 1350, baseScore: 672.0 },
+            { id: "331010", name: "S1 Teknik Industri", faculty: "Teknik Industri", level: "S1", capacity: 100, applicants: 980, baseScore: 642.0 },
+            { id: "331011", name: "S1 Biologi", faculty: "MIPA", level: "S1", capacity: 90, applicants: 480, baseScore: 610.0 },
+            { id: "331012", name: "S1 Matematika", faculty: "MIPA", level: "S1", capacity: 80, applicants: 390, baseScore: 605.0 },
+            { id: "331013", name: "S1 Keperawatan", faculty: "Kedokteran", level: "S1", capacity: 110, applicants: 1220, baseScore: 645.0 },
+            { id: "331014", name: "S1 Sastra Inggris", faculty: "Ilmu Komunikasi", level: "S1", capacity: 80, applicants: 510, baseScore: 618.0 },
+            { id: "331015", name: "D4 Kebidanan", faculty: "Kedokteran", level: "D4", capacity: 60, applicants: 410, baseScore: 598.0 }
+        ];
+
+        // Sample names for live feed simulation
+        const SAMPLE_NAMES = ["Budi Santoso", "Siti Rahma", "Ahmad Fauzi", "Dewi Lestari", "Rian Pratama", "Nadia Putri", "Farhan Rizky", "Aulia Zahra", "Dimas Anggara", "Gita Gutawa"];
+        const SAMPLE_SCHOOLS = ["SMA Negeri 3 Bandung", "SMA Negeri 8 Jakarta", "SMA Negeri 1 Yogyakarta", "SMA Negeri 2 Surabaya", "SMA Labschool Jakarta", "SMA Negeri 5 Semarang"];
+
+        // Application State
+        let isLiveActive = true;
+        let liveTimer = null;
+        let chartInstances = {};
+        let currentFilteredProdi = [...PRODI_DATA];
+
+        // Live stats counters
+        let totalPendaftarCount = 24850;
+        let verifiedCount = 19420;
+        let paidCount = 21150;
+        let finalCount = 17890;
+        let nominalRupiahMillions = 12420; // 12.42 M
+
+        // =========================================================================
+        // APP INITIALIZATION
+        // =========================================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            populateProdiTable();
+            populateSimulationDropdown();
+            startLiveSimulation();
+            updateLastUpdatedTimestamp();
+            runQuotaSimulation(); // initial simulation run
+        });
+
+        // =========================================================================
+        // TAB NAVIGATION LOGIC
+        // =========================================================================
+        function switchTab(tabKey) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-indigo-500', 'text-indigo-400');
+                btn.classList.add('border-transparent', 'text-slate-400');
+            });
+
+            document.getElementById(`tabContent-${tabKey}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tabBtn-${tabKey}`);
+            activeBtn.classList.remove('border-transparent', 'text-slate-400');
+            activeBtn.classList.add('border-indigo-500', 'text-indigo-400');
+
+            // Trigger chart resize on tab switch to avoid zero-width layout glitches
+            setTimeout(() => {
+                Object.values(chartInstances).forEach(chart => chart && chart.resize());
+            }, 50);
+        }
+
+        // =========================================================================
+        // GLOBAL FILTERS HANDLER
+        // =========================================================================
+        function applyGlobalFilters() {
+            const selectedFaculty = document.getElementById('filterFakultas').value;
+            
+            if (selectedFaculty === 'ALL') {
+                currentFilteredProdi = [...PRODI_DATA];
+            } else {
+                currentFilteredProdi = PRODI_DATA.filter(p => p.faculty === selectedFaculty);
+            }
+
+            populateProdiTable();
+            updateFacultyBarChart();
+            updateCapacityVsApplicantsChart();
+        }
+
+        function resetFilters() {
+            document.getElementById('filterJalur').value = 'SMUP Mandiri';
+            document.getElementById('filterGelombang').value = 'Gelombang 1';
+            document.getElementById('filterFakultas').value = 'ALL';
+            applyGlobalFilters();
+        }
+
+        // =========================================================================
+        // CHART INITIALIZATIONS (Chart.js)
+        // =========================================================================
+        function initCharts() {
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = 'Inter, sans-serif';
+
+            // 1. Hourly Trend Line Chart
+            const ctxHourly = document.getElementById('hourlyTrendChart').getContext('2d');
+            chartInstances.hourly = new Chart(ctxHourly, {
+                type: 'line',
+                data: {
+                    labels: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+                    datasets: [
+                        {
+                            label: 'Hari Ini (Live)',
+                            data: [420, 850, 1420, 2100, 2890, 3400, 3950, 4210],
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#6366f1'
+                        },
+                        {
+                            label: 'Kemarin',
+                            data: [380, 790, 1250, 1850, 2400, 2950, 3450, 3800],
+                            borderColor: '#475569',
+                            borderDash: [4, 4],
+                            fill: false,
+                            tension: 0.35,
+                            borderWidth: 2,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+                    scales: {
+                        y: { grid: { color: 'rgba(51, 65, 85, 0.4)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // 2. Status Doughnut Chart
+            const ctxStatus = document.getElementById('statusDoughnutChart').getContext('2d');
+            chartInstances.status = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Draf / Akun', 'Belum Bayar', 'Verifikasi', 'Final / Lolos'],
+                    datasets: [{
+                        data: [2982, 1988, 1988, 17892],
+                        backgroundColor: ['#64748b', '#f59e0b', '#6366f1', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    cutout: '72%'
+                }
+            });
+
+            // 3. Faculty Bar Chart
+            const ctxFaculty = document.getElementById('facultyBarChart').getContext('2d');
+            chartInstances.faculty = new Chart(ctxFaculty, {
+                type: 'bar',
+                data: {
+                    labels: ['Kedokteran', 'Psikologi', 'MIPA', 'Farmasi', 'Hukum', 'FEB', 'FIKOM', 'Teknik'],
+                    datasets: [{
+                        label: 'Total Pendaftar',
+                        data: [5880, 2890, 3320, 1980, 3100, 4670, 3710, 980],
+                        backgroundColor: '#6366f1',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(51, 65, 85, 0.4)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // 4. Top 10 Keketatan Horizontal Bar Chart
+            const ctxTopKeketatan = document.getElementById('topKeketatanChart').getContext('2d');
+            chartInstances.topKeketatan = new Chart(ctxTopKeketatan, {
+                type: 'bar',
+                data: {
+                    labels: ['S1 Kedokteran', 'S1 Teknik Informatika', 'S1 Farmasi', 'S1 Psikologi', 'S1 Ilkom', 'S1 Manajemen', 'S1 HI', 'S1 Akuntansi', 'S1 Hukum', 'S1 Keperawatan'],
+                    datasets: [{
+                        label: 'Keketatan (%)',
+                        data: [2.35, 3.67, 4.04, 4.15, 5.95, 6.55, 6.67, 7.81, 8.06, 9.01],
+                        backgroundColor: function(context) {
+                            const val = context.dataset.data[context.dataIndex];
+                            return val < 5 ? '#f43f5e' : '#f59e0b';
+                        },
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `Keketatan: ${ctx.raw}% (Semakin kecil = semakin ketat)`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(51, 65, 85, 0.4)' }, title: { display: true, text: 'Persentase Kelolosan (%)' } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // 5. Capacity vs Applicants Grouped Bar Chart
+            const ctxCap = document.getElementById('capacityVsApplicantsChart').getContext('2d');
+            chartInstances.capacity = new Chart(ctxCap, {
+                type: 'bar',
+                data: {
+                    labels: ['Kedokteran', 'Psikologi', 'MIPA', 'Farmasi', 'Hukum', 'FEB', 'FIKOM'],
+                    datasets: [
+                        {
+                            label: 'Daya Tampung Kursi',
+                            data: [270, 120, 260, 80, 250, 330, 280],
+                            backgroundColor: '#10b981',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Pendaftar',
+                            data: [5880, 2890, 3320, 1980, 3100, 4670, 3710],
+                            backgroundColor: '#6366f1',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        y: { grid: { color: 'rgba(51, 65, 85, 0.4)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+
+            // 6. Simulation Compare Bar Chart
+            const ctxSim = document.getElementById('simulationCompareChart').getContext('2d');
+            chartInstances.simulation = new Chart(ctxSim, {
+                type: 'bar',
+                data: {
+                    labels: ['Daya Tampung (Kursi)', 'Pendaftar (Siswa)', 'Rasio Keketatan (1 : N)'],
+                    datasets: [
+                        {
+                            label: 'Kondisi Eksisting',
+                            data: [100, 4250, 42.5],
+                            backgroundColor: '#64748b',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Hasil Simulasi',
+                            data: [100, 4250, 42.5],
+                            backgroundColor: '#6366f1',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top' } },
+                    scales: {
+                        y: { grid: { color: 'rgba(51, 65, 85, 0.4)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function updateFacultyBarChart() {
+            if (!chartInstances.faculty) return;
+            
+            const facultyMap = {};
+            currentFilteredProdi.forEach(p => {
+                facultyMap[p.faculty] = (facultyMap[p.faculty] || 0) + p.applicants;
+            });
+
+            chartInstances.faculty.data.labels = Object.keys(facultyMap);
+            chartInstances.faculty.data.datasets[0].data = Object.values(facultyMap);
+            chartInstances.faculty.update();
+        }
+
+        function updateCapacityVsApplicantsChart() {
+            if (!chartInstances.capacity) return;
+
+            const capMap = {};
+            const appMap = {};
+            currentFilteredProdi.forEach(p => {
+                capMap[p.faculty] = (capMap[p.faculty] || 0) + p.capacity;
+                appMap[p.faculty] = (appMap[p.faculty] || 0) + p.applicants;
+            });
+
+            chartInstances.capacity.data.labels = Object.keys(capMap);
+            chartInstances.capacity.data.datasets[0].data = Object.values(capMap);
+            chartInstances.capacity.data.datasets[1].data = Object.values(appMap);
+            chartInstances.capacity.update();
+        }
+
+        // =========================================================================
+        // PROGRAM STUDI TABLE & FILTERING
+        // =========================================================================
+        function populateProdiTable() {
+            const tbody = document.getElementById('prodiTableBody');
+            tbody.innerHTML = '';
+
+            let dataToRender = [...currentFilteredProdi];
+            const sortMode = document.getElementById('tableSortSelect').value;
+
+            // Sort data
+            dataToRender.sort((a, b) => {
+                const ratioA = (a.capacity / a.applicants) * 100;
+                const ratioB = (b.capacity / b.applicants) * 100;
+
+                if (sortMode === 'terketat') return ratioA - ratioB;
+                if (sortMode === 'pendaftar_desc') return b.applicants - a.applicants;
+                if (sortMode === 'daya_tampung_desc') return b.capacity - a.capacity;
+                if (sortMode === 'prodi_asc') return a.name.localeCompare(b.name);
+                return 0;
+            });
+
+            dataToRender.forEach(p => {
+                const percentKeketatan = ((p.capacity / p.applicants) * 100).toFixed(2);
+                const rasio1ToN = (p.applicants / p.capacity).toFixed(1);
+
+                // Determine competition status badge
+                let statusBadgeHTML = '';
+                if (percentKeketatan < 5.0) {
+                    statusBadgeHTML = `<span class="bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2.5 py-1 rounded-full text-[11px] font-semibold">Sangat Ketat</span>`;
+                } else if (percentKeketatan <= 15.0) {
+                    statusBadgeHTML = `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2.5 py-1 rounded-full text-[11px] font-semibold">Ketat</span>`;
+                } else {
+                    statusBadgeHTML = `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full text-[11px] font-semibold">Sedang</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/60 transition";
+                tr.innerHTML = `
+                    <td class="py-3 px-3 font-mono text-slate-400">${p.id}</td>
+                    <td class="py-3 px-4 font-bold text-white">${p.name}</td>
+                    <td class="py-3 px-3 text-slate-300">${p.faculty}</td>
+                    <td class="py-3 px-2 text-center"><span class="bg-slate-800 px-2 py-0.5 rounded text-[10px] font-mono border border-slate-700">${p.level}</span></td>
+                    <td class="py-3 px-3 text-right font-mono font-semibold text-slate-200">${p.capacity.toLocaleString()}</td>
+                    <td class="py-3 px-3 text-right font-mono font-bold text-indigo-400">${p.applicants.toLocaleString()}</td>
+                    <td class="py-3 px-3 text-center font-mono font-semibold text-amber-400">1 : ${rasio1ToN}</td>
+                    <td class="py-3 px-3 text-right font-mono font-bold text-slate-100">${percentKeketatan}%</td>
+                    <td class="py-3 px-4 text-center">${statusBadgeHTML}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('tableCountInfo').innerText = `Menampilkan ${dataToRender.length} Program Studi`;
+        }
+
+        function filterProdiTable() {
+            const query = document.getElementById('tableSearchInput').value.toLowerCase();
+            const selectedFaculty = document.getElementById('filterFakultas').value;
+
+            let filtered = PRODI_DATA.filter(p => {
+                const matchesSearch = p.name.toLowerCase().includes(query) || p.id.includes(query) || p.faculty.toLowerCase().includes(query);
+                const matchesFaculty = (selectedFaculty === 'ALL') || (p.faculty === selectedFaculty);
+                return matchesSearch && matchesFaculty;
+            });
+
+            currentFilteredProdi = filtered;
+            populateProdiTable();
+        }
+
+        // =========================================================================
+        // REAL-TIME ACTIVITY STREAM & COUNTER TICKER
+        // =========================================================================
+        function startLiveSimulation() {
+            if (liveTimer) clearInterval(liveTimer);
+
+            liveTimer = setInterval(() => {
+                if (!isLiveActive) return;
+
+                // 1. Increment Counters randomly
+                const incApplicants = Math.floor(Math.random() * 3) + 1;
+                totalPendaftarCount += incApplicants;
+                if (Math.random() > 0.3) verifiedCount += Math.floor(Math.random() * 2) + 1;
+                if (Math.random() > 0.2) paidCount += Math.floor(Math.random() * 2) + 1;
+                finalCount += Math.floor(Math.random() * 2);
+                nominalRupiahMillions += incApplicants * 0.5; // simulate money increase
+
+                // Update UI KPI counters
+                document.getElementById('kpiTotalPendaftar').innerText = totalPendaftarCount.toLocaleString();
+                document.getElementById('kpiVerifiedCount').innerText = verifiedCount.toLocaleString();
+                document.getElementById('kpiPaidCount').innerText = paidCount.toLocaleString();
+                document.getElementById('kpiFinalCount').innerText = finalCount.toLocaleString();
+                document.getElementById('kpiTotalNominal').innerText = `Rp ${(nominalRupiahMillions / 1000).toFixed(2)} M`;
+
+                // Update Hourly Chart last point dynamically
+                if (chartInstances.hourly) {
+                    const datasetsData = chartInstances.hourly.data.datasets[0].data;
+                    datasetsData[datasetsData.length - 1] += incApplicants;
+                    chartInstances.hourly.update('none'); // silent update
+                }
+
+                // 2. Prepend item to Live Feed
+                addNewLiveFeedEntry();
+
+                updateLastUpdatedTimestamp();
+            }, 3000);
+        }
+
+        function toggleLiveStream() {
+            isLiveActive = !isLiveActive;
+            const pulse = document.getElementById('livePulse');
+            const text = document.getElementById('liveStatusText');
+            const icon = document.getElementById('toggleLiveIcon');
+
+            if (isLiveActive) {
+                pulse.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse-dot";
+                text.className = "font-semibold text-emerald-400 tracking-wide uppercase";
+                text.innerText = "LIVE";
+                icon.className = "fa-solid fa-pause text-xs";
+            } else {
+                pulse.className = "w-2.5 h-2.5 rounded-full bg-slate-500";
+                text.className = "font-semibold text-slate-400 tracking-wide uppercase";
+                text.innerText = "PAUSED";
+                icon.className = "fa-solid fa-play text-xs";
+            }
+        }
+
+        function addNewLiveFeedEntry() {
+            const container = document.getElementById('liveFeedContainer');
+            if (!container) return;
+
+            const randomName = SAMPLE_NAMES[Math.floor(Math.random() * SAMPLE_NAMES.length)];
+            const randomProdi = PRODI_DATA[Math.floor(Math.random() * PRODI_DATA.length)];
+            const randomSchool = SAMPLE_SCHOOLS[Math.floor(Math.random() * SAMPLE_SCHOOLS.length)];
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+
+            const item = document.createElement('div');
+            item.className = "bg-slate-900/90 border border-slate-700/80 rounded-lg p-2.5 text-xs new-row-flash flex flex-col gap-1";
+            item.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-200">${randomName}</span>
+                    <span class="font-mono text-[10px] text-slate-500">${timeStr}</span>
+                </div>
+                <div class="text-[11px] text-indigo-300 font-medium">${randomProdi.name} (${randomProdi.faculty})</div>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                    <span>${randomSchool}</span>
+                    <span class="text-emerald-400 font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-circle-check text-[9px]"></i> Lunas & Verified
+                    </span>
+                </div>
+            `;
+
+            container.insertBefore(item, container.firstChild);
+
+            // Keep only latest 15 logs
+            if (container.children.length > 15) {
+                container.removeChild(container.lastChild);
+            }
+        }
+
+        function clearLiveLog() {
+            document.getElementById('liveFeedContainer').innerHTML = '';
+        }
+
+        function updateLastUpdatedTimestamp() {
+            const now = new Date();
+            document.getElementById('lastUpdated').innerText = `Sync: ${now.toLocaleTimeString()}`;
+        }
+
+        // =========================================================================
+        // TAB 3: DECISION SUPPORT SIMULATOR (WHAT-IF ANALYSIS)
+        // =========================================================================
+        function populateSimulationDropdown() {
+            const select = document.getElementById('simProdiSelect');
+            select.innerHTML = '';
+
+            PRODI_DATA.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = `${p.name} (${p.faculty})`;
+                select.appendChild(opt);
+            });
+        }
+
+        function runQuotaSimulation() {
+            const selectedId = document.getElementById('simProdiSelect').value;
+            const prodi = PRODI_DATA.find(p => p.id === selectedId) || PRODI_DATA[0];
+
+            const sliderOffset = parseInt(document.getElementById('simQuotaSlider').value, 10);
+            const uktRate = parseInt(document.getElementById('simUKTSelect').value, 10);
+
+            // Calculation
+            const baseQuota = prodi.capacity;
+            const applicants = prodi.applicants;
+            const newQuota = Math.max(10, baseQuota + sliderOffset);
+            
+            const baseKeketatanPercent = (baseQuota / applicants) * 100;
+            const newKeketatanPercent = (newQuota / applicants) * 100;
+
+            const baseRatio1N = (applicants / baseQuota).toFixed(1);
+            const newRatio1N = (applicants / newQuota).toFixed(1);
+
+            // Cutoff Score Model (Estimated)
+            // As capacity increases, competition decreases slightly -> cutoff score drops slightly
+            const cutoffShift = (sliderOffset / baseQuota) * -18; 
+            const newCutoffScore = Math.max(500, (prodi.baseScore + cutoffShift)).toFixed(1);
+
+            // Financial Projection
+            const quotaDelta = newQuota - baseQuota;
+            const financialDelta = quotaDelta * uktRate;
+
+            // UI Updates
+            document.getElementById('simBaseFakultas').innerText = prodi.faculty;
+            document.getElementById('simBaseQuota').innerText = `${baseQuota} Kursi`;
+            document.getElementById('simBaseApplicants').innerText = `${applicants.toLocaleString()} Siswa`;
+            document.getElementById('simBaseRatio').innerText = `${baseKeketatanPercent.toFixed(2)}% (1 : ${baseRatio1N})`;
+
+            document.getElementById('simSliderValueText').innerText = `${sliderOffset >= 0 ? '+' : ''}${sliderOffset} Kursi (${((sliderOffset/baseQuota)*100).toFixed(1)}%)`;
+
+            document.getElementById('simResultNewQuota').innerText = newQuota;
+            document.getElementById('simQuotaDiffText').innerText = sliderOffset === 0 ? "Sesuai penetapan awal" : `${sliderOffset > 0 ? 'Penambahan' : 'Pengurangan'} ${Math.abs(sliderOffset)} kursi`;
+
+            document.getElementById('simResultNewRatio').innerText = `1 : ${newRatio1N}`;
+            document.getElementById('simResultNewPercent').innerText = `${newKeketatanPercent.toFixed(2)}% Persentase Kelolosan`;
+
+            document.getElementById('simResultCutoffScore').innerText = newCutoffScore;
+            document.getElementById('simCutoffDiffText').innerText = sliderOffset === 0 ? `Nilai dasar: ${prodi.baseScore}` : `Perubahan estimasi: ${(newCutoffScore - prodi.baseScore).toFixed(1)} poin`;
+
+            // Financial Impact Text
+            const finFormatted = Math.abs(financialDelta).toLocaleString('id-ID');
+            if (financialDelta > 0) {
+                document.getElementById('simFinancialImpact').className = "text-xl font-bold font-mono text-emerald-400 mt-1";
+                document.getElementById('simFinancialImpact').innerText = `+ Rp ${finFormatted}`;
+            } else if (financialDelta < 0) {
+                document.getElementById('simFinancialImpact').className = "text-xl font-bold font-mono text-rose-400 mt-1";
+                document.getElementById('simFinancialImpact').innerText = `- Rp ${finFormatted}`;
+            } else {
+                document.getElementById('simFinancialImpact').className = "text-xl font-bold font-mono text-slate-300 mt-1";
+                document.getElementById('simFinancialImpact').innerText = `Rp 0 / Smt`;
+            }
+
+            // Status Badge update
+            const badgeEl = document.getElementById('simStatusBadge');
+            const expEl = document.getElementById('simStatusExplanation');
+            if (newKeketatanPercent < 5.0) {
+                badgeEl.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30";
+                badgeEl.innerText = "Sangat Ketat";
+                expEl.innerText = "Tingkat persaingan sangat tinggi (<5% kelolosan)";
+            } else if (newKeketatanPercent <= 15.0) {
+                badgeEl.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30";
+                badgeEl.innerText = "Ketat";
+                expEl.innerText = "Tingkat persaingan moderat-tinggi (5% - 15%)";
+            } else {
+                badgeEl.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                badgeEl.innerText = "Sedang";
+                expEl.innerText = "Persaingan relatif aman (>15% kelolosan)";
+            }
+
+            // Executive Recommendation text generator
+            const recoEl = document.getElementById('simRecommendationText');
+            if (sliderOffset > 0) {
+                recoEl.innerText = `Penambahan ${sliderOffset} kuota pada ${prodi.name} berpotensi meningkatkan penerimaan UKT sebesar Rp ${finFormatted}/semester. Keketatan persaingan sedikit melonggar dari 1 : ${baseRatio1N} menjadi 1 : ${newRatio1N}, namun status persaingan tetap terjaga (${badgeEl.innerText}). Diproyeksikan nilai batas minimum UTBK bergeser sebesar ${(newCutoffScore - prodi.baseScore).toFixed(1)} poin. Disarankan memastikan kapasitas ruang kuliah dan laboratorium mencukupi.`;
+            } else if (sliderOffset < 0) {
+                recoEl.innerText = `Pengurangan ${Math.abs(sliderOffset)} kuota akan memperketat persaingan menjadi 1 : ${newRatio1N} (${newKeketatanPercent.toFixed(2)}%). Hal ini akan meningkatkan kualitas standar pendaftar yang diterima (Cutoff naik +${Math.abs(newCutoffScore - prodi.baseScore).toFixed(1)} poin), namun berpotensi menurunkan potensi registrasi UKT sebesar Rp ${finFormatted}/semester.`;
+            } else {
+                recoEl.innerText = `Kapasitas kuota ${prodi.name} saat ini (${baseQuota} kursi) berada pada kondisi optimal dengan total ${applicants.toLocaleString()} pendaftar (1 : ${baseRatio1N}). Tidak ada perubahan proyeksi.`;
+            }
+
+            // Update Simulation Comparison Chart
+            if (chartInstances.simulation) {
+                chartInstances.simulation.data.datasets[0].data = [baseQuota, applicants, parseFloat(baseRatio1N)];
+                chartInstances.simulation.data.datasets[1].data = [newQuota, applicants, parseFloat(newRatio1N)];
+                chartInstances.simulation.update();
+            }
+        }
+
+        // =========================================================================
+        // CSV EXPORT UTILITY
+        // =========================================================================
+        function exportToCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Kode,Program Studi,Fakultas,Jenjang,Daya Tampung,Pendaftar,Rasio (1:N),Keketatan (%)\n";
+
+            currentFilteredProdi.forEach(p => {
+                const percent = ((p.capacity / p.applicants) * 100).toFixed(2);
+                const ratio = (p.applicants / p.capacity).toFixed(1);
+                csvContent += `"${p.id}","${p.name}","${p.faculty}","${p.level}",${p.capacity},${p.applicants},"1:${ratio}",${percent}%\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Data_Keketatan_SMUP_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
